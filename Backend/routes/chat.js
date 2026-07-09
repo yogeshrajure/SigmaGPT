@@ -1,7 +1,7 @@
 import express from "express";
 import Thread from "../models/Thread.js";
 import getGeminiAPIResponse from "../utils/openai.js";
-import { userVerification } from "../Middlewares/AuthMiddleware.js";
+import { userVerification } from "../middlewares/AuthMiddleware.js";
 
 const router = express.Router();
 
