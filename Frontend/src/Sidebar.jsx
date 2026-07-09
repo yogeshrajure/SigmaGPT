@@ -23,7 +23,7 @@ function Sidebar() {
 
   const getAllThreads = async () => {
     try {
-      const response = await fetch("http://localhost:5000/api/thread", {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/thread`, {
         credentials: "include",
       });
 
@@ -57,7 +57,7 @@ function Sidebar() {
 
     try {
       const response = await fetch(
-        `http://localhost:5000/api/thread/${newThreadId}`,
+        `${import.meta.env.VITE_API_URL}/api/thread/${newThreadId}`,
         {
           credentials: "include",
         }
@@ -76,7 +76,7 @@ function Sidebar() {
   const deleteThread = async (threadId) => {
     try {
       const response = await fetch(
-        `http://localhost:5000/api/thread/${threadId}`,
+        `${import.meta.env.VITE_API_URL}/api/thread/${threadId}`,
         {
           method: "DELETE",
           credentials: "include",
@@ -100,7 +100,7 @@ function Sidebar() {
   const handleLogout = async () => {
     try {
       await axios.post(
-        "http://localhost:5000/auth/logout",
+        `${import.meta.env.VITE_API_URL}/auth/logout`,
         {},
         {
           withCredentials: true,

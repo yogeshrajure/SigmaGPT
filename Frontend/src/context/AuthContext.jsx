@@ -10,18 +10,18 @@ export const AuthProvider = ({ children }) => {
   const checkAuth = async () => {
     try {
       const res = await axios.get(
-        "http://localhost:5000/auth/me",
+        `${import.meta.env.VITE_API_URL}/auth/me`,
         {
           withCredentials: true,
         }
       );
 
-      console.log("✅ Auth Success");
+      console.log("Auth Success");
       console.log("User:", res.data);
 
       setUser(res.data);
     } catch (error) {
-      console.log("❌ Auth Failed");
+      console.log("Auth Failed");
 
       if (error.response) {
         console.log("Status:", error.response.status);
