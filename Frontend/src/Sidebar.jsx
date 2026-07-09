@@ -5,7 +5,7 @@ import { v1 as uuidv1 } from "uuid";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "./context/AuthContext";
-
+import logo from "./assets/blacklogo.png";
 function Sidebar() {
   const {
     allThreads,
@@ -119,7 +119,7 @@ function Sidebar() {
     <section className="sidebar">
       <button onClick={createNewChat}>
         <img
-          src="src/assets/blacklogo.png"
+          src={logo}
           alt="gpt logo"
           className="logo"
         />
