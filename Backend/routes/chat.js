@@ -1,124 +1,141 @@
 import express from "express";
 import Thread from "../models/Thread.js";
 import getGeminiAPIResponse from "../utils/openai.js";
+import { userVerification } from "../Middlewares/AuthMiddleware.js";
 
 const router = express.Router();
 
-// Test Route
-// router.post("/test", async (req, res) => {
-//     try {
-//         const thread = new Thread({
-//             threadId: "abc",
-//             title: "Testing New Thread1"
-//         });
+// ==================== Get All Threads ====================
+router.get("/thread", userVerification, async (req, res) => {
+  try {
+    const threads = await Thread.find({
+      userId: req.user._id,
+    }).sort({ updatedAt: -1 });
 
-//         const response = await thread.save();
-//         res.send(response);
-//     } catch (err) {
-//         console.log(err);
-//         res.status(500).json({ error: "Failed to save in DB" });
-//     }
-// });
-
-// // Get all threads
-router.get("/thread", async (req, res) => {
-    try {
-        const threads = await Thread.find({}).sort({ updatedAt: -1 });
-        res.json(threads);
-    } catch (err) {
-        console.log(err);
-        res.status(500).json({ error: "Failed to fetch threads" });
-    }
+    res.json(threads);
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({
+      error: "Failed to fetch threads",
+    });
+  }
 });
 
-// // Get messages of a thread
-router.get("/thread/:threadId", async (req, res) => {
-    const { threadId } = req.params;
+// ==================== Get Messages of a Thread ====================
+router.get("/thread/:threadId", userVerification, async (req, res) => {
+  const { threadId } = req.params;
 
-    try {
-        const thread = await Thread.findOne({ threadId });
+  try {
+    const thread = await Thread.findOne({
+      threadId,
+      userId: req.user._id,
+    });
 
-        if (!thread) {
-            return res.status(404).json({ error: "Thread not found" });
-        }
-
-        res.json(thread.messages);
-    } catch (err) {
-        console.log(err);
-        res.status(500).json({ error: "Failed to fetch chat" });
+    if (!thread) {
+      return res.status(404).json({
+        error: "Thread not found",
+      });
     }
+
+    res.json(thread.messages);
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({
+      error: "Failed to fetch chat",
+    });
+  }
 });
 
-// // Delete thread
-router.delete("/thread/:threadId", async (req, res) => {
-    const { threadId } = req.params;
+// ==================== Delete Thread ====================
+router.delete("/thread/:threadId", userVerification, async (req, res) => {
+  const { threadId } = req.params;
 
-    try {
-        const deletedThread = await Thread.findOneAndDelete({ threadId });
+  try {
+    const deletedThread = await Thread.findOneAndDelete({
+      threadId,
+      userId: req.user._id,
+    });
 
-        if (!deletedThread) {
-            return res.status(404).json({ error: "Thread not found" });
-        }
-
-        res.json({ success: "Thread deleted successfully" });
-    } catch (err) {
-        console.log(err);
-        res.status(500).json({ error: "Failed to delete thread" });
+    if (!deletedThread) {
+      return res.status(404).json({
+        error: "Thread not found",
+      });
     }
+
+    res.json({
+      success: "Thread deleted successfully",
+    });
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({
+      error: "Failed to delete thread",
+    });
+  }
 });
 
-// // Chat Route
-router.post("/chat", async (req, res) => {
-    const { threadId, message } = req.body;
+// ==================== Chat ====================
+router.post("/chat", userVerification, async (req, res) => {
+  const { threadId, message } = req.body;
 
-    if (!threadId || !message) {
-        return res.status(400).json({
-            error: "Missing required fields"
-        });
+  if (!threadId || !message) {
+    return res.status(400).json({
+      error: "Missing required fields",
+    });
+  }
+
+  try {
+    let thread = await Thread.findOne({
+      threadId,
+      userId: req.user._id,
+    });
+
+    // Create new thread
+    if (!thread) {
+      thread = new Thread({
+        userId: req.user._id,
+        threadId,
+        title:
+          message.length > 30
+            ? message.slice(0, 30) + "..."
+            : message,
+        messages: [
+          {
+            role: "user",
+            content: message,
+          },
+        ],
+      });
+    }
+    // Existing thread
+    else {
+      thread.messages.push({
+        role: "user",
+        content: message,
+      });
     }
 
-    try {
-        let thread = await Thread.findOne({ threadId });
+    // Gemini Response
+    const assistantReply = await getGeminiAPIResponse(message);
 
-        if (!thread) {
-            thread = new Thread({
-                threadId,
-                title: message.length > 30 ? message.slice(0, 30) + "..." : message,
-                messages: [
-                    {
-                        role: "user",
-                        content: message
-                    }
-                ]
-            });
-        } else {
-            thread.messages.push({
-                role: "user",
-                content: message
-            });
-        }
+    thread.messages.push({
+      role: "assistant",
+      content: assistantReply,
+    });
 
-        // Gemini API
-        const assistantReply = await getGeminiAPIResponse(message);
+    thread.updatedAt = new Date();
 
-        thread.messages.push({
-            role: "assistant",
-            content: assistantReply
-        });
+    await thread.save();
 
-        thread.updatedAt = new Date();
-        await thread.save();
+    res.json({
+      reply: assistantReply,
+    });
+  } catch (err) {
+    console.log(err);
 
-        res.json({
-            reply: assistantReply
-        });
-
-    } catch (err) {
-        console.log(err);
-        res.status(500).json({
-            error: "Something went wrong"
-        });
-    }
+    res.status(500).json({
+      error: "Something went wrong",
+    });
+  }
 });
 
 export default router;
